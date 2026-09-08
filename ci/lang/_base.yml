@@ -1,0 +1,17 @@
+# Shared job bases for per-language SDK pipelines.
+# Language-specific jobs live in ci/lang/<lang>.yml and extend these.
+
+.lint_language:
+  stage: lint
+  before_script:
+    - !reference [.git_ready, before_script]
+
+.test_language:
+  stage: test
+  before_script:
+    - !reference [.git_ready, before_script]
+
+.security_language:
+  stage: security
+  before_script:
+    - !reference [.git_ready, before_script]

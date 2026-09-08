@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# pre-commit hook — gofmt check on staged .go files only.
+# Bypass: git commit --no-verify
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if ! command -v go >/dev/null 2>&1; then
+  echo "pre-commit: go not found — install Go, then run: make setup" >&2
+  exit 1
+fi
+
+staged_go="$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.go$' || true)"
+if [ -z "$staged_go" ]; then
+  exit 0
+fi
+
+unformatted="$(gofmt -l $staged_go)"
+if [ -n "$unformatted" ]; then
+  echo "pre-commit: gofmt needed on:" >&2
+  echo "$unformatted" >&2
+  echo "run: make lint-fix" >&2
+  exit 1
+fi

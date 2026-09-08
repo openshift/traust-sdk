@@ -1,0 +1,2 @@
+# go build output (if someone runs `go build ./internal/generate` directly)
+/generate

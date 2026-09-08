@@ -1,0 +1,28 @@
+# Go SDK — lint:go, test:go, security:go run in parallel with other languages per stage.
+
+.lang_go:
+  variables:
+    LANG: go
+    LANG_DIR: go
+    # ubi go-toolset often sets GOTOOLCHAIN=local; ci.py overrides from go.mod.
+    GOTOOLCHAIN: go1.26.6
+  image: registry.access.redhat.com/ubi9/go-toolset:latest
+  rules:
+    - exists:
+        paths:
+          - go/go.mod
+
+lint:go:
+  extends: [.lang_go, .lint_language]
+  script:
+    - python3 ci/lang/go/ci.py lint
+
+test:go:
+  extends: [.lang_go, .test_language]
+  script:
+    - python3 ci/lang/go/ci.py test
+
+security:go:
+  extends: [.lang_go, .security_language]
+  script:
+    - python3 ci/lang/go/ci.py security

@@ -1,0 +1,14 @@
+{
+  "languages": [
+    {
+      "id": "go",
+      "name": "Go",
+      "dir": "go",
+      "tag_prefix": "go",
+      "marker": "go/go.mod",
+      "scopes": [
+        "go"
+      ]
+    }
+  ]
+}

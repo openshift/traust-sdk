@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# pre-push hook — go vet + unit tests before push.
+# Bypass: git push --no-verify
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if ! command -v go >/dev/null 2>&1; then
+  echo "pre-push: go not found — install Go, then run: make setup" >&2
+  exit 1
+fi
+
+make lint
+make test
