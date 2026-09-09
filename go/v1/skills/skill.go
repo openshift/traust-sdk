@@ -152,7 +152,7 @@ var Validate = NewSkill[ValidateInput, types.Validation](SkillValidateFindings, 
 // Input: VerifyInput (repo + original audit report + patched ref).
 // Output: types.Verification — per-finding verdicts on whether fixes resolve
 // the original vulnerabilities, with regression detection.
-var Verify = NewSkill[VerifyInput, types.Verification](SkillVerifyRemedation, "", "verification")
+var Verify = NewSkill[VerifyInput, types.Verification](SkillVerifyRemediation, "", "verification")
 
 // Remediate runs the remediate-finding skill.
 // Input: RemediateInput (repo + remediation manifest ID).

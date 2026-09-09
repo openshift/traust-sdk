@@ -12,6 +12,13 @@ import (
 	"github.com/openshift/traust-sdk/go/v1/ingest"
 )
 
+func mustNoErr(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestHTTPClient_BatchSubmitLane(t *testing.T) {
 	var gotPath string
 	var body ingest.BatchSubmitInput
@@ -19,8 +26,8 @@ func TestHTTPClient_BatchSubmitLane(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		raw, _ := io.ReadAll(r.Body)
-		json.Unmarshal(raw, &body)
-		w.Write([]byte(`{"id":"batch-ok","status":"accepted"}`))
+		mustNoErr(t, json.Unmarshal(raw, &body))
+		_, _ = w.Write([]byte(`{"id":"batch-ok","status":"accepted"}`))
 	}))
 	defer srv.Close()
 
@@ -66,9 +73,9 @@ func TestHTTPClient_EventLane(t *testing.T) {
 		gotPath = r.URL.Path
 		gotAuth = r.Header.Get("Authorization")
 		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, &envelope)
-		json.Unmarshal(envelope.Event, &event)
-		w.Write([]byte(`{"id":"cs-1","status":"accepted"}`))
+		mustNoErr(t, json.Unmarshal(body, &envelope))
+		mustNoErr(t, json.Unmarshal(envelope.Event, &event))
+		_, _ = w.Write([]byte(`{"id":"cs-1","status":"accepted"}`))
 	}))
 	defer srv.Close()
 
@@ -110,8 +117,8 @@ func TestHTTPClient_AllEventKindsRoute(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, &envelope)
-		w.Write([]byte(`{"id":"x","status":"accepted"}`))
+		mustNoErr(t, json.Unmarshal(body, &envelope))
+		_, _ = w.Write([]byte(`{"id":"x","status":"accepted"}`))
 	}))
 	defer srv.Close()
 
@@ -157,9 +164,9 @@ func TestHTTPClient_ResolveAndFingerprint(t *testing.T) {
 		paths = append(paths, r.URL.Path)
 		switch r.URL.Path {
 		case "/v1/ledger/layers/repo-a/resolve":
-			w.Write([]byte(`{"resolved":true,"key":"k"}`))
+			_, _ = w.Write([]byte(`{"resolved":true,"key":"k"}`))
 		case "/v1/ledger/fingerprint":
-			w.Write([]byte(`{"findings":[],"stamped_count":0}`))
+			_, _ = w.Write([]byte(`{"findings":[],"stamped_count":0}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -190,7 +197,7 @@ func TestHTTPClient_SignLayer(t *testing.T) {
 		gotPath = r.URL.Path
 		gotMethod = r.Method
 		gotAuth = r.Header.Get("Authorization")
-		w.Write([]byte(`{"status":"signed","method":"cosign","layer_id":"repo-a"}`))
+		_, _ = w.Write([]byte(`{"status":"signed","method":"cosign","layer_id":"repo-a"}`))
 	}))
 	defer srv.Close()
 
@@ -218,7 +225,7 @@ func TestHTTPClient_SignLayerRekor(t *testing.T) {
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
-		w.Write([]byte(`{"status":"signed","method":"cosign","layer_id":"repo-a"}`))
+		_, _ = w.Write([]byte(`{"status":"signed","method":"cosign","layer_id":"repo-a"}`))
 	}))
 	defer srv.Close()
 
@@ -235,7 +242,7 @@ func TestHTTPClient_SignLayerRekor(t *testing.T) {
 func TestHTTPClient_StatusError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(422)
-		w.Write([]byte(`{"error":"validation failed"}`))
+		_, _ = w.Write([]byte(`{"error":"validation failed"}`))
 	}))
 	defer srv.Close()
 
@@ -260,15 +267,16 @@ func TestHTTPClient_KindInEnvelopeNotHeader(t *testing.T) {
 	var gotKindHeader string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotKindHeader = r.Header.Get("X-Ingest-Kind")
-		w.Write([]byte(`{"id":"x","status":"ok"}`))
+		_, _ = w.Write([]byte(`{"id":"x","status":"ok"}`))
 	}))
 	defer srv.Close()
 
 	client := ingest.NewHTTPClient(srv.URL)
-	client.SubmitCountersign(context.Background(), ingest.CountersignInput{
+	_, err := client.SubmitCountersign(context.Background(), ingest.CountersignInput{
 		EventMeta:  ingest.EventMeta{LayerID: "repo-a", RecordedAt: "2026-01-16T00:00:00+00:00"},
 		FindingRef: "FIND-001", Verdict: "true_positive",
 	})
+	mustNoErr(t, err)
 
 	if gotKindHeader != "" {
 		t.Fatal("kind should be in body envelope, not in headers")
