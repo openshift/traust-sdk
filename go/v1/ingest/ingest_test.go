@@ -548,3 +548,42 @@ func fixtureTriageInput() ingest.TriageReportInput {
 	}
 	return in
 }
+
+func TestConvertOccurredAtNeverDoublesTheTimeComponent(t *testing.T) {
+	cases := []struct {
+		name       string
+		date       string
+		recordedAt string
+		want       string
+	}{
+		{"bare date padded", "2026-07-09", "2026-07-11T12:00:00+00:00", "2026-07-09T00:00:00+00:00"},
+		{"timestamp passes through", "2026-07-09T14:30:00Z", "2026-07-11T12:00:00+00:00", "2026-07-09T14:30:00Z"},
+		{"offset passes through", "2026-07-09T14:30:00+02:00", "", "2026-07-09T14:30:00+02:00"},
+		{"empty falls back", "", "2026-07-11T12:00:00+00:00", "2026-07-11T12:00:00+00:00"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			report := types.Verification{
+				Metadata: types.VerificationMetadata{Date: tc.date, HarnessVersion: "0.28.0"},
+				VerifiedFindings: []types.VerifiedFinding{{
+					OriginalId: "FIND-001",
+					Verdict:    "resolved",
+					Evidence:   types.VerifiedFindingEvidence{Explanation: "patch removes sink"},
+				}},
+			}
+
+			out := ingest.ConvertVerificationReport(report, "verifications/v.json", tc.recordedAt, nil)
+			if len(out.Events) != 1 {
+				t.Fatalf("expected 1 event, got %d", len(out.Events))
+			}
+			got, _ := out.Events[0]["occurred_at"].(string)
+			if got != tc.want {
+				t.Fatalf("occurred_at: got %q, want %q", got, tc.want)
+			}
+			if strings.Count(got, "T") > 1 {
+				t.Fatalf("duplicate time component: %q", got)
+			}
+		})
+	}
+}

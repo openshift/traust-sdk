@@ -137,6 +137,7 @@ func getCompiler() *jsonschema.Compiler {
 	compilerOnce.Do(func() {
 		c := jsonschema.NewCompiler()
 		c.UseLoader(mapLoader{})
+		c.AssertFormat()
 		compiler = c
 	})
 	return compiler

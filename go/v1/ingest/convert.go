@@ -33,7 +33,7 @@ func stampFingerprint(event map[string]interface{}, fpIndex map[string]string, r
 // fpIndex maps finding_ref to the ledger-computed fingerprint (from the scan
 // report); each derived event is stamped with its finding's fingerprint.
 func ConvertTriageReport(report types.Triage, sourceRef, recordedAt string, fpIndex map[string]string) ConvertResult {
-	occurredAt := triageOccurredAt(report.TriageCompleted, recordedAt)
+	occurredAt := eventOccurredAt(report.TriageCompleted, recordedAt)
 	source := map[string]interface{}{
 		"type": "triage_report",
 		"ref":  sourceRef,
@@ -96,7 +96,7 @@ func ConvertTriageReport(report types.Triage, sourceRef, recordedAt string, fpIn
 // ConvertValidationReport maps a validation report to ledger events.
 // fpIndex maps finding_ref to the ledger-computed fingerprint.
 func ConvertValidationReport(report types.Validation, sourceRef, recordedAt string, fpIndex map[string]string) ConvertResult {
-	occurredAt := validationOccurredAt(report.Metadata.Date, recordedAt)
+	occurredAt := eventOccurredAt(report.Metadata.Date, recordedAt)
 	source := map[string]interface{}{
 		"type": "validation_report",
 		"ref":  sourceRef,
@@ -141,7 +141,7 @@ func ConvertValidationReport(report types.Validation, sourceRef, recordedAt stri
 // ConvertVerificationReport maps a verification report to ledger events.
 // fpIndex maps finding_ref to the ledger-computed fingerprint.
 func ConvertVerificationReport(report types.Verification, sourceRef, recordedAt string, fpIndex map[string]string) ConvertResult {
-	occurredAt := verificationOccurredAt(report.Metadata.Date, recordedAt)
+	occurredAt := eventOccurredAt(report.Metadata.Date, recordedAt)
 	source := map[string]interface{}{
 		"type": "verification_report",
 		"ref":  sourceRef,
@@ -237,26 +237,23 @@ func triageValidity(verdict enums.Verdict) (string, bool) {
 	}
 }
 
-func triageOccurredAt(triageCompleted, recordedAt string) string {
-	date := triageCompleted
-	if date == "" && len(recordedAt) >= 10 {
-		date = recordedAt[:10]
-	}
-	return date + "T00:00:00+00:00"
-}
-
-func validationOccurredAt(reportDate, recordedAt string) string {
+// eventOccurredAt derives an event's occurred_at from a report's own date
+// field, falling back to the submission's recordedAt.
+//
+// Report dates are contractually YYYY-MM-DD, but producers pass full
+// timestamps. Appending the midnight suffix unconditionally produced
+// "2026-01-16T00:00:00ZT00:00:00+00:00", which the ledger stores without
+// complaint and then cannot read back.
+func eventOccurredAt(reportDate, recordedAt string) string {
 	date := reportDate
-	if date == "" && len(recordedAt) >= 10 {
-		date = recordedAt[:10]
+	if date == "" {
+		date = recordedAt
 	}
-	return date + "T00:00:00+00:00"
-}
-
-func verificationOccurredAt(reportDate, recordedAt string) string {
-	date := reportDate
-	if date == "" && len(recordedAt) >= 10 {
-		date = recordedAt[:10]
+	if strings.ContainsAny(date, "Tt") {
+		return date
+	}
+	if len(date) > 10 {
+		date = date[:10]
 	}
 	return date + "T00:00:00+00:00"
 }
