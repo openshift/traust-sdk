@@ -2,6 +2,7 @@ package validate
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -101,5 +102,26 @@ func TestCompiledSchemaValidation(t *testing.T) {
 	invalid := []byte(`{"events": [], "needs_review": []}`)
 	if err := compiled.Validate(invalid); err == nil {
 		t.Fatal("expected validation error for layer missing metadata")
+	}
+}
+
+// Regression guard for the compiler config, not the schemas: without
+// AssertFormat a declared "format" accepts every string.
+func TestFormatIsAsserted(t *testing.T) {
+	body := func(date string) []byte {
+		return []byte(`{"metadata":{"date":"` + date + `"}}`)
+	}
+	flagged := func(data []byte) bool {
+		err := ValidateBytes("verification", data)
+		return err != nil && strings.Contains(err.Error(), "/metadata/date")
+	}
+
+	if flagged(body("2026-07-09")) {
+		t.Error("a conforming date must not be flagged")
+	}
+	for _, bad := range []string{"banana", "2026-07-09T00:00:00Z", "2026-13-45"} {
+		if !flagged(body(bad)) {
+			t.Errorf("%q should fail `format: date` — is AssertFormat still set?", bad)
+		}
 	}
 }
